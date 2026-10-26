@@ -1,0 +1,138 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Subscriptions";
+}
+
+<section class="dashboard-heading">
+    <div>
+        <p class="eyebrow">YOUR RECURRING BILLS</p>
+        <h1>Subscriptions</h1>
+        <p class="text-muted">Keep track of what you use and what it costs.</p>
+    </div>
+    @if (Model.DashboardAvailable)
+    {
+        <div class="monthly-total">
+            <span>Estimated monthly spend</span>
+            <strong>@Model.Summary.EstimatedMonthlyTotal.ToString("C")</strong>
+            <small>@Model.Summary.ActiveSubscriptionCount active subscriptions · USD</small>
+        </div>
+    }
+</section>
+
+@if (TempData["Notice"] is string notice)
+{
+    <div class="alert alert-success" role="status">@notice</div>
+}
+
+@if (Model.ApiError is not null)
+{
+    <div class="alert alert-danger" role="alert">@Model.ApiError</div>
+}
+
+<div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+<section class="content-grid">
+    <div class="panel subscriptions-panel">
+        <div class="panel-heading">
+            <div>
+                <h2>Your subscriptions</h2>
+                <p class="text-muted">Yearly prices are divided by 12 in the monthly estimate.</p>
+            </div>
+        </div>
+
+        @if (Model.DashboardAvailable && Model.Subscriptions.Count == 0)
+        {
+            <div class="empty-state">
+                <h3>No subscriptions yet</h3>
+                <p>Add your first subscription using the form.</p>
+            </div>
+        }
+        else if (Model.DashboardAvailable)
+        {
+            <div class="subscription-list">
+                @foreach (var subscription in Model.Subscriptions)
+                {
+                    <article class="subscription-row">
+                        <div class="subscription-details">
+                            <div class="subscription-title">
+                                <h3>@subscription.Name</h3>
+                                <span class="status-badge @(subscription.Status == SubscriptionStatus.Active ? "active" : "cancelled")">
+                                    @subscription.Status
+                                </span>
+                            </div>
+                            <p class="text-muted">
+                                @subscription.Price.ToString("C") / @subscription.BillingPeriod.ToString().ToLowerInvariant()
+                                @if (subscription.NextBillingDate is not null)
+                                {
+                                    <span> · Next bill @subscription.NextBillingDate.Value.ToString("MMM d, yyyy")</span>
+                                }
+                            </p>
+                            @if (subscription.Status == SubscriptionStatus.Active)
+                            {
+                                @if (!string.IsNullOrWhiteSpace(subscription.CancellationUrl))
+                                {
+                                    <a class="provider-link" href="@subscription.CancellationUrl" target="_blank" rel="noopener noreferrer">
+                                        Open provider cancellation page
+                                    </a>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">No cancellation page added</span>
+                                }
+                            }
+                        </div>
+                        <div class="subscription-cost">
+                            <strong>@subscription.MonthlyEquivalent.ToString("C")</strong>
+                            <small>per month</small>
+                            @if (subscription.Status == SubscriptionStatus.Active)
+                            {
+                                <form method="post" asp-page-handler="Cancel" asp-route-id="@subscription.Id">
+                                    <button class="btn btn-sm btn-outline-secondary mt-2" type="submit">
+                                        Mark cancelled
+                                    </button>
+                                </form>
+                            }
+                        </div>
+                    </article>
+                }
+            </div>
+        }
+    </div>
+
+    <aside class="panel add-panel">
+        <h2>Add a subscription</h2>
+        <p class="text-muted">Enter the amount and billing schedule.</p>
+        <form method="post" asp-page-handler="Add">
+            <div class="mb-3">
+                <label asp-for="Input.Name" class="form-label">Service name</label>
+                <input asp-for="Input.Name" class="form-control" placeholder="e.g. Music service" />
+                <span asp-validation-for="Input.Name" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Input.Price" class="form-label">Price (USD)</label>
+                <input asp-for="Input.Price" class="form-control" type="number" min="0.01" step="0.01" placeholder="9.99" />
+                <span asp-validation-for="Input.Price" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Input.BillingPeriod" class="form-label">Billing schedule</label>
+                <select asp-for="Input.BillingPeriod" asp-items="Html.GetEnumSelectList<BillingPeriod>()" class="form-select"></select>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Input.NextBillingDate" class="form-label">Next billing date <span class="text-muted">(optional)</span></label>
+                <input asp-for="Input.NextBillingDate" class="form-control" type="date" />
+            </div>
+            <div class="mb-3">
+                <label asp-for="Input.CancellationUrl" class="form-label">Provider cancellation page <span class="text-muted">(optional)</span></label>
+                <input asp-for="Input.CancellationUrl" class="form-control" type="url" placeholder="https://example.com/account" />
+                <span asp-validation-for="Input.CancellationUrl" class="text-danger"></span>
+                <div class="form-text">This opens the provider's site; it does not cancel automatically.</div>
+            </div>
+            <button class="btn btn-primary w-100" type="submit">Add subscription</button>
+        </form>
+    </aside>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

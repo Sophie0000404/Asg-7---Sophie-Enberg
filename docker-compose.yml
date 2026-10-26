@@ -1,0 +1,27 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: src/Subscription.Api/Dockerfile
+    environment:
+      ASPNETCORE_HTTP_PORTS: 8080
+      ConnectionStrings__Subscriptions: "Data Source=/app/data/subscriptions.db"
+    ports:
+      - "5001:8080"
+    volumes:
+      - subscription-data:/app/data
+
+  web:
+    build:
+      context: .
+      dockerfile: src/Subscription.Web/Dockerfile
+    environment:
+      ASPNETCORE_HTTP_PORTS: 8080
+      SubscriptionApi__BaseUrl: "http://api:8080"
+    ports:
+      - "5000:8080"
+    depends_on:
+      - api
+
+volumes:
+  subscription-data:
